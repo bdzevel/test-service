@@ -31,5 +31,5 @@ Needs .env file at root (not checked in), with following (JSON) structure:
 		"TESTSERVICE_ENVIRONMENT": "development/production",
 		"TESTSERVICE_TLS_ENABLED": "0/1",
 		"TESTSERVICE_PORT": 3000,
-    	"TESTSERVICE_GATEWAY_URL": "http://localhost:3000"
+		"TESTSERVICE_GATEWAY_URL": "http://localhost:3000"
 	}

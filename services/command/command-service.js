@@ -11,40 +11,40 @@ class CommandService {
 	}
 	
 	initialize() {
-        this.commandHandlers = { };
+		this.commandHandlers = { };
 	}
-    
-    register(symbol, callback) {
-        if (this.commandHandlers[symbol]) {
-            let err = `Handler for '${symbol}' already registered`;
+	
+	register(symbol, callback) {
+		if (this.commandHandlers[symbol]) {
+			let err = `Handler for '${symbol}' already registered`;
 			TS.traceError(__filename, err);
-            return;
-        }
-        this.commandHandlers[symbol] = function(msg) {
-            validateMessage(msg);
-            return callback(msg);
-        };
-    }
+			return;
+		}
+		this.commandHandlers[symbol] = function(msg) {
+			validateMessage(msg);
+			return callback(msg);
+		};
+	}
 
-    dispatch(command) {
-        let symbol = command.Symbol;
+	dispatch(command) {
+		let symbol = command.Symbol;
 		TS.traceVerbose(__filename, `Received ${symbol}`);
-        if (!this.commandHandlers[symbol]) {
+		if (!this.commandHandlers[symbol]) {
 			TS.traceWarning(__filename, `No handler registered for '${symbol}'`);
 			return;
 		}
-        let response = this.commandHandlers[symbol](command);
+		let response = this.commandHandlers[symbol](command);
 		TS.traceVerbose(__filename, `Submitted ${symbol}`);
-        return response;
-    }
+		return response;
+	}
 }
 
 function validateMessage(msg) {
-    if (!(msg instanceof Message)) {
-        let err = "Invalid message";
-        TS.traceError(__filename, err);
-        throw err;
-    }
+	if (!(msg instanceof Message)) {
+		let err = "Invalid message";
+		TS.traceError(__filename, err);
+		throw err;
+	}
 }
 
 module.exports = new CommandService();
