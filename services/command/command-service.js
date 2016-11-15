@@ -12,18 +12,17 @@ class CommandService {
 	
 	initialize() {
         this.commandHandlers = { };
-		this.configurationService = require("../configuration/configuration-service");
 	}
     
     register(symbol, callback) {
         if (this.commandHandlers[symbol]) {
             let err = `Handler for '${symbol}' already registered`;
 			TS.traceError(__filename, err);
-            throw err;
+            return;
         }
         this.commandHandlers[symbol] = function(msg) {
             validateMessage(msg);
-            callback(msg);
+            return callback(msg);
         };
     }
 
@@ -35,7 +34,7 @@ class CommandService {
 			return;
 		}
         let response = this.commandHandlers[symbol](command);
-		TS.traceVerbose(__filename, `Finished handling ${symbol}`);
+		TS.traceVerbose(__filename, `Submitted ${symbol}`);
         return response;
     }
 }

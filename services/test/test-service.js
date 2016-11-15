@@ -1,9 +1,10 @@
 let TS = require("../../diagnostics/trace-sources").get("Test-Service");
 
+let constants = require("../../resources/constants").Test;
+
 let Message = require("../../contracts/message");
 
-let gatewayConstants = require("../../resources/constants").Gateway;
-let testConstants = require("../../resources/constants").Test;
+let Q = require("q");
 
 class TestService {
 	constructor() {
@@ -13,49 +14,73 @@ class TestService {
 	}
 	
 	initialize() {
-        this.webClient = require("../web/web-client");
         this.commandService = require("../command/command-service");
-		this.configurationService = require("../configuration/configuration-service");
+        this.gatewayService = require("../remote-gateway/remote-gateway-service");
         this.registerCallbacks();
 	}
 
     registerCallbacks() {
-        this.ENDPOINT = "http://" + require("os").hostname() + ":" + this.configurationService.get("PORT");
-        this.GATEWAY = this.configurationService.get("GATEWAY_URL");
+        // Each event handler that is registered with the service gateway must have a corresponding command handler
+        //  otherwise it won't be routed here
+        this.commandService.register(constants.Events.OnTestMe, (msg) => this.onTestMe(msg));
+        this.gatewayService.register(constants.Events.OnTestMe);
 
-        this.commandService.register(testConstants.Events.TestMe, (msg) => this.onTestMe);
-        this.registerCallbackWithGateway(testConstants.Events.TestMe);
-        this.commandService.register(testConstants.Events.TestYou, (msg) => this.onTestYou);
-        this.registerCallbackWithGateway(testConstants.Events.TestYou);
-    }
+        this.commandService.register(constants.Events.OnTestYou, (msg) => this.onTestYou(msg));
+        this.gatewayService.register(constants.Events.OnTestYou);
 
-    registerCallbackWithGateway(symbol) {
-        var msg = new Message(gatewayConstants.Actions.Register);
-        msg.addArgument("Symbol", symbol);
-        msg.addArgument("RequestURL", this.ENDPOINT);
-        this.webClient.sendRequest("POST", this.GATEWAY, msg);
+        // ...but local commands don't necessarily have to be registered with the gateway:
+        this.commandService.register(constants.Actions.RaiseEvent, (msg) => this.publish(msg));
+        this.commandService.register(constants.Actions.DispatchCommand, (msg) => this.dispatch(msg));
     }
 
     onTestMe(msg) {
-        TS.traceVerbose("onTestMe");
+        TS.traceVerbose(__filename, "+event: onTestMe");
+        return Q.fcall(() => {
+            let response = new Message(constants.Responses.TestMe);
+            TS.traceVerbose(__filename, "-event: onTestMe");
+            return response;
+        });
     }
 
     onTestYou(msg) {
-        TS.traceVerbose("onTestYou");
+        TS.traceVerbose(__filename, "+event: onTestYou");
+        return Q.fcall(() => {
+            let response = new Message(constants.Responses.TestYou);
+            TS.traceVerbose(__filename, "-event: onTestYou");
+            return response;
+        });
     }
 
-    publishTestMe() {
-        this.publishEvent(testConstants.Events.TestMe);
+    publish(msg) {
+        let eventSymbol = msg.getArgument("EventSymbol");
+		TS.traceVerbose(__filename, `Publishing event '${eventSymbol}'...`);
+        return Q.fcall((symbol) => {
+            let m = new Message(symbol);
+            let promise = this.gatewayService.broadcast(m);
+		    TS.traceVerbose(__filename, `Event '${eventSymbol}' published`);
+            return promise;
+        }, eventSymbol);
     }
 
-    publishTestYou() {
-        this.publishEvent(testConstants.Events.TestYou);
+    dispatch(msg) {
+        let commandSymbol = msg.getArgument("CommandSymbol");
+		TS.traceVerbose(__filename, `Dispatching command '${commandSymbol}'...`);
+        return Q.fcall((symbol) => {
+            var m = new Message(symbol);
+            let promise = this.gatewayService.dispatch(m);
+		    TS.traceVerbose(__filename, `Command '${commandSymbol}' dispatched`);
+            return promise;
+        }, commandSymbol);
     }
 
-    publishEvent(symbol) {
-        var msg = new Message(gatewayConstants.Actions.Broadcast);
-        msg.addArgument("Symbol", symbol);
-        this.webClient.sendRequest("POST", this.GATEWAY, msg);
+    test() {
+        let msg = new Message(constants.Actions.RaiseEvent);
+        msg.addArgument("EventSymbol", constants.Events.OnTestMe);
+        this.publish(msg);
+
+        msg = new Message(constants.Actions.RaiseEvent);
+        msg.addArgument("EventSymbol", constants.Events.OnTestYou);
+        this.publish(msg);
     }
 }
 module.exports = new TestService();

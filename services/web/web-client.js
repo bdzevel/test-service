@@ -26,7 +26,7 @@ class WebClient {
                 let code = response.getCode();
                 let body = response.getBody();
                 let msg = Message.fromJson(body);
-                let errMessage = msg.getArgument("Error");
+                let errMessage = msg.getArgument("ErrorMessage");
                 if (!errMessage)
                     errMessage = body.message;
                 TS.traceError(__filename, `Error ${code}. ${errMessage}`);
